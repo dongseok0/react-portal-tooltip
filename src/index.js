@@ -28,6 +28,7 @@ class Card extends React.Component {
     style: {style: {}, arrowStyle: {}}
   }
   state = {
+    position: this.props.position,
     hover: false,
     transition: 'opacity',
     width: 0,
@@ -55,7 +56,7 @@ class Card extends React.Component {
       zIndex: 50
     }
 
-    assign(style, this.getStyle(this.props.position, this.props.arrow))
+    assign(style, this.getStyle(this.state.position, this.props.arrow))
 
     return this.mergeStyle(style, this.props.style.style)
   }
@@ -80,7 +81,8 @@ class Card extends React.Component {
     let bgColorBorder = `11px solid ${bgBorderColor}`
     let bgTransBorder = '9px solid transparent'
 
-    let {position, arrow} = this.props
+    let {arrow} = this.props
+    let {position} = this.state
 
     if (position === 'left' || position === 'right') {
       fgStyle.top = '50%'
@@ -318,6 +320,10 @@ class Card extends React.Component {
               break
           }
         }
+
+        if (style.left < 0) {
+          this.setState({position: 'right'});
+        }
         break
 
       case 'right':
@@ -336,6 +342,10 @@ class Card extends React.Component {
               style.left = left + parent.offsetWidth + this.margin
               break
           }
+        }
+
+        if (style.left + this.state.width  > window.innerWidth) {
+          this.setState({position: 'left'});
         }
         break
 
@@ -356,6 +366,10 @@ class Card extends React.Component {
               break
           }
         }
+
+        if (style.top < 0) {
+          this.setState({position: 'bottom'});
+        }
         break
 
       case 'bottom':
@@ -375,13 +389,18 @@ class Card extends React.Component {
               break
           }
         }
+
+        if (style.top + this.state.height > window.innerHeight) {
+          this.setState({position: 'top'});
+        }
         break
     }
 
     return style
   }
   checkWindowPosition(style, arrowStyle) {
-    if (this.props.position === 'top' || this.props.position === 'bottom') {
+    const {position} = this.state
+    if (position === 'top' || position === 'bottom') {
       if (style.left < 0) {
         let offset = style.left
         style.left = this.margin
@@ -410,6 +429,16 @@ class Card extends React.Component {
   componentDidMount() {
     this.updateSize()
   }
+  componentDidUpdate(prevProps, prevState) {
+    const {width: w, height: h, position: p} = this.state
+    const {width: pW, height: pH, position: pP} = prevState
+
+    if (w !== pW || h !== pH || p !== pP || this.props !== prevProps) {
+      this.setState({
+        ...this.checkWindowPosition(this.style, this.arrowStyle)
+      })
+    }
+  }
   componentWillReceiveProps() {
     this.setState({transition: this.state.hover || this.props.active ? 'all' : 'opacity'}, () => {
       this.updateSize()
@@ -418,12 +447,13 @@ class Card extends React.Component {
   updateSize() {
     let self = ReactDOM.findDOMNode(this)
     this.setState({
+      position: this.props.position,
       width: self.offsetWidth,
       height: self.offsetHeight
     })
   }
   render() {
-    let {style, arrowStyle} = this.checkWindowPosition(this.style, this.arrowStyle)
+    let {style = this.style, arrowStyle = this.arrowStyle} = this.state
 
     return (
       <div style={style} onMouseEnter={::this.handleMouseEnter} onMouseLeave={::this.handleMouseLeave}>
